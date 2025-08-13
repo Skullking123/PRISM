@@ -1,8 +1,10 @@
-from HardwareMonitor.Hardware import IVisitor, IComputer, IHardware, IParameter, ISensor, Computer
+from HardwareMonitor.Hardware import IVisitor, IComputer, IHardware, IParameter, ISensor, Computer, HardwareType
 from HardwareMonitor.Util import OpenComputer
+from PySide6.QtCore import QPointF, QDateTime
 import time 
 import pandas as pd
 import datetime
+from constants import *
 
 TIME_BETWEEN_UPDATES = 1  # seconds
 
@@ -40,7 +42,7 @@ def logHardwareUsage(duration: float = 60) -> pd.DataFrame:
     while True:
         computer.Accept(visitor)
         elapsedTime = time.perf_counter() - startTime
-        row = [elapsedTime/60]  # convert seconds to minutes
+        row = [elapsedTime]  # convert seconds to minutes
         for hardware in computer.Hardware:
             for sensor in hardware.Sensors:
                 row.append(sensor.Value)
@@ -52,8 +54,48 @@ def logHardwareUsage(duration: float = 60) -> pd.DataFrame:
         
 class HardwareLogger:
     """Class to manage hardware logs."""
-    
-    def initializeLoggingDataFrame(self, computer: Computer) -> pd.DataFrame:
+
+    def __init__(self, hardware: Hardware):
+        self.hardware = hardware
+        self.computer = Computer()
+        self.logs = None
+        if hardware == Hardware.CPU:
+            self.computer.IsCpuEnabled = True
+        elif hardware == Hardware.GPU:
+            self.computer.IsGpuEnabled = True
+        elif hardware == Hardware.MEMORY:
+            self.computer.IsMemoryEnabled = True
+        elif hardware == Hardware.COOLING:
+            self.computer.IsControllerEnabled = True
+        elif hardware == Hardware.STORAGE:
+            self.computer.IsStorageEnabled = True
+        elif hardware == Hardware.NETWORK:
+            self.computer.IsNetworkEnabled = True
+        else:
+            self.computer = OpenComputer(all=True)
+            
+        self.computer.Open()
+        
+
+    def read(self) -> dict:
+        """Gets the current hardware usage values"""
+        visitor = UpdateVisitor()
+        self.computer.Open()
+        self.computer.Accept(visitor)
+        
+        if self.logs is None:
+            self.logs = self.__initializeLoggingDataFrame(self.computer)
+            
+        data  = {"Time": time.time()}
+        row = [time.perf_counter()]
+        for hardware in self.computer.Hardware:
+            for sensor in hardware.Sensors:
+                data[sensor.Name] = sensor.Value
+                row.append(sensor.Value)
+        self.logs.loc[len(self.logs)] = row
+        return data
+
+    def __initializeLoggingDataFrame(self, computer: Computer) -> pd.DataFrame:
         """Initialize a DataFrame to log hardware usage."""
         columns = ["Time"]
         for hardware in computer.Hardware:
@@ -62,29 +104,18 @@ class HardwareLogger:
         self.logs = pd.DataFrame(columns=columns)
         return self.logs
 
-    def logHardwareUsage(self, duration: float = 60) -> pd.DataFrame:
-        """Monitor CPU usage and print sensor values."""
-        computer = OpenComputer(all=True)
-        hardwareUsage = initializeLoggingDataFrame(computer)
-        computer.Open()
-        visitor = UpdateVisitor()
-        computer.Accept(visitor)
-        startTime = time.perf_counter()
-        while True:
-            computer.Accept(visitor)
-            elapsedTime = time.perf_counter() - startTime
-            row = [elapsedTime/60]  # convert seconds to minutes
-            for hardware in computer.Hardware:
-                for sensor in hardware.Sensors:
-                    row.append(sensor.Value)
-            hardwareUsage.loc[len(hardwareUsage)] = row
-            if elapsedTime > duration:  # stop after 10 seconds
-                break
-            time.sleep(TIME_BETWEEN_UPDATES)  # sleep for 0.25 seconds to give time for the next update
-        self.logs = hardwareUsage
-        return hardwareUsage
-    
-    def listMetrics(self) -> list:
+    def listMetrics(self) -> list[str]:
         """List all metrics available in the logs."""
         return self.logs.columns.tolist()   
+
+    def __del__(self):
+        self.computer.Close()
+
+
+if __name__ == "__main__":
+    # data = logHardwareUsage()
+    # data.to_csv("hardware_usage_log.csv", index=False)
+    logger = HardwareLogger(None)
+    print(logger.read())
+
     
