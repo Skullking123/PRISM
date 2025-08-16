@@ -18,3 +18,5 @@ class Hardware(Enum):
     COOLING = "cooling"
     STORAGE = "storage"
     NETWORK = "network"
+    MOTHERBOARD = "motherboard"
+    CONTROLLER = "controller"
