@@ -129,7 +129,18 @@ class Overview(QWidget):
         # update cpu info
         cpuTotal = data["CPU Total Load"]
         cpuRemaining = 100 - cpuTotal
+        
+        # get the temperature
+        if self.logger.isAMDorIntelCPU():
+            cpuTemp = data["Core (Tctl/Tdie) Temperature"]
+            # self.cpuInfo.addMetric("Temperature", cpuTemp, "°C")
+        else:
+            cpuTemp = data["CPU Package Temperature"]
+            # self.cpuInfo.addMetric("Temperature", cpuTemp, "°C")
+            
+        self.cpuInfo.updateMetrics({"Temperature": (cpuTemp, "°C"), })
         self.cpuChart.set_chart_data([("Load", cpuTotal, FREE), ("", cpuRemaining, USED)], f"CPU {int(cpuTotal)}%", False)
+
         
         # update gpu info
         gpuTotal = data["GPU Core Load"]

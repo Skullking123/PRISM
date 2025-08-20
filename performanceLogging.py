@@ -78,7 +78,7 @@ class HardwareLogger:
         else:
             self.computer = OpenComputer(all=True)
         self.computer.Open()
-        
+
 
     def read(self) -> dict:
         """Gets the current hardware usage values"""
@@ -96,6 +96,8 @@ class HardwareLogger:
                 data[f"{sensor.Name} {sensor.SensorType}"] = sensor.Value
                 row.append(sensor.Value)
         self.logs.loc[len(self.logs)] = row
+        
+        self.computer.Close()
         return data
 
     def __initializeLoggingDataFrame(self, computer: Computer) -> pd.DataFrame:
@@ -109,11 +111,32 @@ class HardwareLogger:
 
     def listMetrics(self) -> list[str]:
         """List all metrics available in the logs."""
-        return self.logs.columns.tolist()   
+        return self.logs.columns.tolist()
 
-    def __del__(self):
-        self.computer.Close()
-
+    def getSensors(self, hardwareType: HardwareType) -> list[ISensor]:
+        """Get all sensors for a specific hardware type."""
+        sensors = []
+        for hardware in self.computer.Hardware:
+            if hardware.HardwareType == hardwareType:
+                sensors.append(hardware.Sensors)
+        return sensors
+    
+    def getDataFromSensors(self, sensors: list[ISensor]) -> dict[str, str]:
+        """Get data from a list of sensors."""
+        data = {}
+        for sensor in sensors:
+            data[sensor.Name] = SensorValueToString(sensor.Value, sensor.SensorType)
+        return data
+    
+    def isAMDorIntelCPU(self) -> bool:
+        """Check if the CPU is AMD or Intel. True if its AMD, false otherwise"""
+        for hardware in self.computer.Hardware:
+            if hardware.HardwareType == HardwareType.Cpu:
+                if hardware.Name.lower().startswith("amd"):
+                    return True
+                else:
+                    return False
+        return False
 
 if __name__ == "__main__":
     # data = logHardwareUsage()
