@@ -6,10 +6,13 @@ from PySide6.QtWidgets import (QApplication, QWidget, QMainWindow, QPushButton,
                                QSizePolicy, QFrame)
 from PySide6.QtCharts import QChart, QChartView, QLineSeries
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QResizeEvent
+from PySide6.QtGui import QResizeEvent, QPalette
 from constants import *
 from overviewPage import Overview
 from enum import Enum
+from performanceLogging import HardwareLogger
+hardware = HardwareLogger(None)
+
 
 
 class App(QMainWindow):
@@ -116,7 +119,7 @@ class App(QMainWindow):
     def displayOverview(self):
         """Display the overview page"""
         self.clearContent()
-        overview_widget = Overview()
+        overview_widget = Overview(self.palette().color(QPalette.ColorRole.Window))
         self.content_layout.addWidget(overview_widget)
 
     def displayPerformance(self):

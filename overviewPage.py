@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QProgressBar, QGri
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis, QPieSeries
 from PySide6.QtGui import QColor
 from HardwareMonitor.Hardware import HardwareType
+from HardwareMonitor.Util import SensorValueToString
 from constants import *
 import threading
 from PySide6.QtCore import QPointF, QTimer, Qt
@@ -12,41 +13,8 @@ from performanceLogging import HardwareLogger
 import time
 from DonutChart import DonutChart
 
-
-
-class UsagePieChart(QChartView):
-    def __init__(self, parent=None, title=""):
-        super().__init__(parent)
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
-
-        # Create donut chart
-        self.series = QPieSeries()
-        self.series.append("Used", 70)
-        self.series.append("Free", 30)
-        self.series.setHoleSize(0.6)  # 0.0 = pie, 1.0 = full hole
-
-        chart = QChart()
-        chart.addSeries(self.series)
-        chart.setTitle(title)
-        chart.legend().hide()
-
-        chart_view = QChartView(chart)
-        chart_view.setRenderHint(chart_view.RenderHint.Antialiasing)
-        layout.addWidget(chart_view)
-
-        # Create label and overlay it
-        self.label = QLabel("70%")
-        self.label.setAlignment(Qt.AlignCenter)
-        self.label.setStyleSheet("font-size: 24px; font-weight: bold; background: transparent;")
-        layout.addWidget(self.label, alignment=Qt.AlignCenter)
-
-    def setValue(self, used: int, free: int):
-        self.series.clear()
-        self.series.append("Used", used)
-        self.series.append("Free", free)
-        self.label.setText(f"{used}%")
+USED = QColor(255, 99, 132)
+FREE = QColor(75, 192, 192)
 
 class QuickInfoGroupWidget(QGroupBox):
     def __init__(self, parent=None, title: str ="", metrics: list[str] = None):
@@ -89,8 +57,10 @@ class QuickInfoWidget(QWidget):
         self.label.setText(f"{self.metric}: {value} {unit}")
 
 class Overview(QWidget):
-    def __init__(self, parent=None):
+    def __init__(self, color: QColor, parent=None):
         super().__init__(parent)
+        global USED
+        USED = color
         self.setContentsMargins(0, 0, 0, 0)
         # self.setSpacing(0)
         self.logger = HardwareLogger(None)
@@ -100,6 +70,11 @@ class Overview(QWidget):
         self.initCPUView()
         self.initGPUView()
         self.initMemoryView()
+        self.timer = QTimer()
+        self.timer.setInterval(1000)
+        self.timer.timeout.connect(self.updateData)
+        self.timer.start()
+        print("gets here")
         
     def initCPUView(self):
         self.cpuView = QWidget()
@@ -149,6 +124,20 @@ class Overview(QWidget):
         self.memoryView.setLayout(layout)
         self.layout().addWidget(self.memoryView, 1, 0)
 
-    def update(self, data = {}):
-        cpuData = {}
-        cpuData["CPU Total"] = data["CPU Total"]
+    def updateData(self):
+        data = self.logger.read()
+        # update cpu info
+        cpuTotal = data["CPU Total Load"]
+        cpuRemaining = 100 - cpuTotal
+        self.cpuChart.set_chart_data([("Load", cpuTotal, FREE), ("", cpuRemaining, USED)], f"CPU {int(cpuTotal)}%", False)
+        
+        # update gpu info
+        gpuTotal = data["GPU Core Load"]
+        gpuRemaining = 100 - gpuTotal
+        self.gpuChart.set_chart_data([("Load", gpuTotal, FREE), ("", gpuRemaining, USED)], f"GPU {int(gpuTotal)}%", False)      
+        
+        
+        
+        
+        
+        

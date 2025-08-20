@@ -1,11 +1,12 @@
 from HardwareMonitor.Hardware import IVisitor, IComputer, IHardware, IParameter, ISensor, Computer, HardwareType
-from HardwareMonitor.Util import OpenComputer
+from HardwareMonitor.Util import OpenComputer, SensorValueToString
 from PySide6.QtCore import QPointF, QDateTime
 import time 
 import pandas as pd
 import json
 import datetime
 from constants import *
+# from psutil import disk_usage, virtual_memory, cpu_percent, net_io_counters
 
 TIME_BETWEEN_UPDATES = 1  # seconds
 
@@ -92,7 +93,7 @@ class HardwareLogger:
         row = [time.perf_counter()]
         for hardware in self.computer.Hardware:
             for sensor in hardware.Sensors:
-                data[sensor.Name] = sensor.Value
+                data[f"{sensor.Name} {sensor.SensorType}"] = sensor.Value
                 row.append(sensor.Value)
         self.logs.loc[len(self.logs)] = row
         return data
@@ -129,7 +130,6 @@ if __name__ == "__main__":
     computer.IsMemoryEnabled = True
     computer.IsNetworkEnabled = True
     computer.IsStorageEnabled = True
-    compute= True
     computer.Open()
     computer.Accept(UpdateVisitor())
     for hardware in computer.Hardware:
@@ -137,7 +137,7 @@ if __name__ == "__main__":
         for subhardware  in hardware.SubHardware:
             print(f"\tSubhardware: {subhardware.Name}")
             for sensor in subhardware.Sensors:
-                print(f"\t\tSensor: {sensor.Name}, value: {sensor.Value}")
+                print(f"\t\tSensor: {sensor.Name} : {sensor.SensorType}, value: {SensorValueToString(sensor.Value, sensor.SensorType)}")
         for sensor in hardware.Sensors:
-            print(f"\tSensor: {sensor.Name}, value: {sensor.Value}")
+            print(f"\tSensor: {sensor.Name} : {sensor.SensorType}, value: {SensorValueToString(sensor.Value, sensor.SensorType)}")
     computer.Close()
