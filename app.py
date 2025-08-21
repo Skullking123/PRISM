@@ -6,14 +6,10 @@ from PySide6.QtWidgets import (QApplication, QWidget, QMainWindow, QPushButton,
                                QSizePolicy, QFrame)
 from PySide6.QtCharts import QChart, QChartView, QLineSeries
 from PySide6.QtCore import QSize, Qt
-from PySide6.QtGui import QResizeEvent, QPalette
+from PySide6.QtGui import QResizeEvent, QPalette, QCloseEvent
 from constants import *
 from overviewPage import Overview
 from enum import Enum
-from performanceLogging import HardwareLogger
-hardware = HardwareLogger(None)
-
-
 
 class App(QMainWindow):
     def __init__(self, parent=None):
@@ -111,16 +107,16 @@ class App(QMainWindow):
 
     def clearContent(self):
         """Clear the current content area"""
-        while self.content_layout.count():
-            child = self.content_layout.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
+        if hasattr(App, "currWidget"):
+            self.content_layout.removeWidget(self.currWidget)
 
     def displayOverview(self):
         """Display the overview page"""
         self.clearContent()
-        overview_widget = Overview(self.palette().color(QPalette.ColorRole.Window))
-        self.content_layout.addWidget(overview_widget)
+        if not hasattr(App, "overview_widget"):
+            self.overview_widget = Overview(self.palette().color(QPalette.ColorRole.Window))
+        self.currWidget = self.overview_widget
+        self.content_layout.addWidget(self.overview_widget)
 
     def displayPerformance(self):
         """Display the performance page"""
@@ -145,7 +141,11 @@ class App(QMainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 18px; font-weight: bold;")
         self.content_layout.addWidget(label)
-
+        
+    # def closeEvent(self, event):
+    #     super().closeEvent(event)
+    #     LOGGER_INSTANCE.stopUpdating() 
+        
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
