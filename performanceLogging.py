@@ -8,6 +8,7 @@ import datetime
 from constants import *
 import psutil
 import threading
+from constants import HardwareParts
 # from psutil import disk_usage, virtual_memory, cpu_percent, net_io_counters
 
 TIME_BETWEEN_UPDATES = 1  # seconds
@@ -37,64 +38,32 @@ class Hardware():
         """Get all hardware organized by type"""
         allHardware = {}
         
-
+        # Define mapping from HardwareType to HardwareParts enum
+        hardware_type_mapping = {
+            HardwareType.Cpu: HardwareParts.CPU,
+            HardwareType.Battery: HardwareParts.BATTERY,
+            HardwareType.GpuNvidia: HardwareParts.GPU,
+            HardwareType.GpuAmd: HardwareParts.GPU,
+            HardwareType.GpuIntel: HardwareParts.GPU,
+            HardwareType.Memory: HardwareParts.MEMORY,
+            HardwareType.Motherboard: HardwareParts.MOTHERBOARD,
+            HardwareType.Storage: HardwareParts.STORAGE,
+            HardwareType.Network: HardwareParts.NETWORK,
+            HardwareType.Cooler: HardwareParts.COOLING,
+            HardwareType.EmbeddedController: HardwareParts.CONTROLLER,
+            HardwareType.Psu: HardwareParts.PSU,
+            HardwareType.SuperIO: HardwareParts.SUPERIO,
+        }
+        
         for hardware in self.computer.Hardware:
-            # CPU
-            if hardware.HardwareType == HardwareType.Cpu:
-                if "CPU" not in allHardware:
-                    allHardware["CPU"] = [hardware]
-                else:
-                    allHardware["CPU"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Battery:
-                if "Battery" not in allHardware:
-                    allHardware["Battery"] = [hardware]
-                else:
-                    allHardware["Battery"].append(hardware)
-            elif hardware.HardwareType == HardwareType.GpuNvidia or hardware.HardwareType == HardwareType.GpuAmd or hardware.HardwareType == HardwareType.GpuIntel:
-                if "GPU" not in allHardware:
-                    allHardware["GPU"] = [hardware]
-                else:
-                    allHardware["GPU"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Memory:
-                if "Memory" not in allHardware:
-                    allHardware["Memory"] = [hardware]
-                else:
-                    allHardware["Memory"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Motherboard:
-                if "Motherboard" not in allHardware:
-                    allHardware["Motherboard"] = [hardware]
-                else:
-                    allHardware["Motherboard"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Storage:
-                if "Storage" not in allHardware:
-                    allHardware["Storage"] = [hardware]
-                else:
-                    allHardware["Storage"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Network:
-                if "Network" not in allHardware:
-                    allHardware["Network"] = [hardware]
-                else:
-                    allHardware["Network"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Cooler:
-                if "Cooler" not in allHardware:
-                    allHardware["Cooler"] = [hardware]
-                else:
-                    allHardware["Cooler"].append(hardware)
-            elif hardware.HardwareType == HardwareType.EmbeddedController:
-                if "EmbeddedController" not in allHardware:
-                    allHardware["EmbeddedController"] = [hardware]
-                else:
-                    allHardware["EmbeddedController"].append(hardware)
-            elif hardware.HardwareType == HardwareType.Psu:
-                if "PSU" not in allHardware:
-                    allHardware["PSU"] = [hardware]
-                else:
-                    allHardware["PSU"].append(hardware)
-            elif hardware.HardwareType == HardwareType.SuperIO:
-                if "SuperIO" not in allHardware:
-                    allHardware["SuperIO"] = [hardware]
-                else:
-                    allHardware["SuperIO"].append(hardware)
+            # Get the corresponding enum value for this hardware type
+            hardware_part = hardware_type_mapping.get(hardware.HardwareType)
+            
+            if hardware_part:
+                key = hardware_part.value
+                if key not in allHardware:
+                    allHardware[key] = []
+                allHardware[key].append(hardware)
         
         return allHardware
     
