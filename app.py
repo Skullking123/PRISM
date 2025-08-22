@@ -9,7 +9,6 @@ from PySide6.QtCore import QSize, Qt
 from PySide6.QtGui import QResizeEvent, QPalette, QCloseEvent
 from constants import *
 from overviewPage import Overview
-from scrolling_line_chart import ScrollingLineChart
 from enum import Enum
 
 class App(QMainWindow):
@@ -122,39 +121,15 @@ class App(QMainWindow):
     def displayPerformance(self):
         """Display the performance page"""
         self.clearContent()
-        if not hasattr(self, "performance_widget"):
-            self.performance_widget = ScrollingLineChart()
-        self.currWidget = self.performance_widget
-        self.content_layout.addWidget(self.performance_widget)
+        label = QLabel("Performance Monitoring")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setStyleSheet("font-size: 18px; font-weight: bold;")
+        self.content_layout.addWidget(label)
 
     def displayTemperatures(self):
         """Display the temperatures page"""
         self.clearContent()
-        if not hasattr(self, "temperature_widget"):
-            self.temperature_widget = ScrollingLineChart()
-            # Set default metric to temperature
-            temp_index = self.temperature_widget.metric_combo.findText("Temperature")
-            if temp_index >= 0:
-                self.temperature_widget.metric_combo.setCurrentIndex(temp_index)
-        self.currWidget = self.temperature_widget
-        self.content_layout.addWidget(self.temperature_widget)
-
-    def displayNetwork(self):
-        """Display the network monitoring page"""
-        self.clearContent()
-        if not hasattr(self, "network_widget"):
-            self.network_widget = ScrollingLineChart()
-            # Set default metric to network upload
-            network_index = self.network_widget.metric_combo.findText("Network Upload")
-            if network_index >= 0:
-                self.network_widget.metric_combo.setCurrentIndex(network_index)
-        self.currWidget = self.network_widget
-        self.content_layout.addWidget(self.network_widget)
-
-    def displayStorage(self):
-        """Display the storage monitoring page"""
-        self.clearContent()
-        label = QLabel("Storage Monitoring")
+        label = QLabel("Temperature Monitoring")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setStyleSheet("font-size: 18px; font-weight: bold;")
         self.content_layout.addWidget(label)
