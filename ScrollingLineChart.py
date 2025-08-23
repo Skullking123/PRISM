@@ -238,6 +238,7 @@ class ScrollingLineChart(QWidget):
         # Find data ranges across all series
         all_x_values = []
         all_y_values = []
+        total_points = 0
         
         for data in self.data_series.values():
             if data:
@@ -245,6 +246,7 @@ class ScrollingLineChart(QWidget):
                 y_vals = [point[1] for point in data]
                 all_x_values.extend(x_vals)
                 all_y_values.extend(y_vals)
+                total_points += len(data)
         
         if not all_x_values or not all_y_values:
             return
@@ -257,10 +259,26 @@ class ScrollingLineChart(QWidget):
         x_padding = (x_max - x_min) * 0.05 if x_max != x_min else 1.0
         y_padding = (y_max - y_min) * 0.1 if y_max != y_min else 1.0
         
-        if (x_min - x_padding) < 0:
-            self.x_axis.setRange(0, x_max + x_padding)
+        # Handle different scrolling behavior based on number of data points
+        if total_points < 100:
+            # Right-to-left scrolling: fix x-axis range and show recent data on the right
+            # Create a fixed window that shows the last portion of the time range
+            window_size = 10.0  # Show a 10-second window
+            
+            if x_max == x_min:
+                # Single point case
+                self.x_axis.setRange(max(0, x_max - window_size), x_max + 1.0)
+            else:
+                # Multiple points - show from (x_max - window_size) to x_max + padding
+                x_axis_min = max(0, x_max - window_size)
+                self.x_axis.setRange(x_axis_min, x_max + x_padding)
         else:
-            self.x_axis.setRange(x_min - x_padding, x_max + x_padding)
+            # Normal scrolling behavior for 100+ points
+            if (x_min - x_padding) < 0:
+                self.x_axis.setRange(0, x_max + x_padding)
+            else:
+                self.x_axis.setRange(x_min - x_padding, x_max + x_padding)
+        
         self.y_axis.setRange(0, y_max + y_padding)
     
     def set_axis_ranges(self, x_min: float, x_max: float, y_min: float, y_max: float):
@@ -405,9 +423,9 @@ class ScrollingLineChartDemo(QWidget):
         temperature = 65 + 10 * math.sin(self.time_counter * 0.05) + random.uniform(-2, 2)
         
         # Add data points
-        self.chart.add_data_point("CPU Usage", self.time_counter, cpu_usage)
-        self.chart.add_data_point("Memory Usage", self.time_counter, memory_usage)
-        self.chart.add_data_point("Temperature", self.time_counter, temperature)
+        self.chart.add_data_point("CPU Usage", cpu_usage)
+        self.chart.add_data_point("Memory Usage", memory_usage)
+        self.chart.add_data_point("Temperature", temperature)
         
         self.time_counter += 0.1
 
