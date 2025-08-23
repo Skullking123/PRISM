@@ -1,7 +1,7 @@
 import sys
 from venv import logger
 
-from PySide6.QtWidgets import QVBoxLayout, QLabel, QGroupBox, QProgressBar, QGridLayout, QWidget
+from PySide6.QtWidgets import QHBoxLayout, QVBoxLayout, QLabel, QGroupBox, QProgressBar, QGridLayout, QWidget, QSpacerItem, QSizePolicy
 from PySide6.QtCharts import QChart, QChartView, QLineSeries, QValueAxis, QPieSeries
 from PySide6.QtGui import QColor
 from HardwareMonitor.Hardware import HardwareType
@@ -15,6 +15,7 @@ from DonutChart import DonutChart
 import json
 import psutil
 import random
+from ScrollingLineChart import ScrollingLineChart
 
 BACKGROUND = QColor(255, 99, 132)
 FREE = QColor(75, 192, 192)
@@ -22,68 +23,55 @@ FREE = QColor(75, 192, 192)
 NOT_FOUND = -9999
 
 class QuickInfoGroupWidget(QGroupBox):
-    def __init__(self, parent=None, title: str ="", metrics: list[SensorType] = None):
+    def __init__(self, parent=None, title: str ="", metrics: list[(str, SensorType)] = None, vertical = True):
         super().__init__(parent)
         self.setTitle(title)
-        layout = QVBoxLayout(self)
+        if vertical:
+            layout = QVBoxLayout(self)
+        else:
+            layout = QHBoxLayout(self)
+        layout.addStretch()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         self.widgets = []
         if metrics:
-            for item in metrics:
-                layout.addWidget(QuickInfoWidget(item, self))
+            last = len(metrics) - 1
+            for item in range(0, len(metrics)):
+                name, type = metrics[item]
+                layout.addWidget(QuickInfoWidget(name, type, self))
+                if item != last: # don't add a spacer after the last item
+                    if vertical:
+                        layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding))
+                    else:
+                        layout.addSpacerItem(QSpacerItem(0, 0, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum))
+        layout.addStretch()
         self.setLayout(layout)
 
-    def updateMetrics(self, metrics: dict[SensorType, float]):
+    def updateMetrics(self, metrics: dict[str, float]):
         # Update the metrics displayed in the QuickInfoWidgets
         # the dictionary maps metric names to their (value, unit) tuples
         for item in self.findChildren(QuickInfoWidget):
-            metric_name = item.data
+            metric_name = item.name
             if metric_name in metrics:
                 item.setValue(metrics[metric_name])
         # print(self.findChildren(QuickInfoWidget))
 
 class QuickInfoWidget(QWidget):
-    def __init__(self, data: SensorType, parent=None):
+    def __init__(self, name: str, type: SensorType, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        self.label = QLabel(SensorTypeToString(data) + ": ")
+        self.type = type
+        self.name = name
+        self.label = QLabel(name + ": ")
         layout.addWidget(self.label)
-        self.progress_bar = QProgressBar()
-        # Make the progress bar thicker
-        self.progress_bar.setMinimumHeight(20)  # Set minimum height to 20 pixels (adjust as needed)
-        
-        # Optional: Style the progress bar for better appearance
-        background_color = BACKGROUND.name()
-        load_color = FREE.name()
-        self.progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                border: 1px solid #999;
-                border-radius: 3px;
-                background-color: {background_color};
-                height: 25px;  /* Explicit height */
-            }}
-            QProgressBar::chunk {{
-                background-color: {load_color};
-                border-radius: 2px;
-            }}
-        """)
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(50)
-        self.progress_bar.setTextVisible(False)
-        self.data = data
-        layout.addWidget(self.progress_bar)
         self.setLayout(layout)
-    
     def setValue(self, value: float):
         if value != NOT_FOUND:
-            self.progress_bar.setValue(value)
-            self.label.setText(f"{SensorTypeToString(self.data)}: {SensorValueToString(value, self.data)}")
+            self.label.setText(f"{self.name}: {SensorValueToString(value, self.type)}")
         else:
-            self.progress_bar.setValue(0)
-            self.label.setText(f"{SensorTypeToString(self.data)}: N/A")
+            self.label.setText(f"{self.name}: N/A")
         self.update()
         
 class Overview(QWidget):
@@ -99,6 +87,7 @@ class Overview(QWidget):
         self.initCPUView()
         self.initGPUView()
         self.initMemoryView()
+        self.initNetworkView()
         self.timer = QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.updateData)
@@ -114,7 +103,7 @@ class Overview(QWidget):
             ("Used", 100, FREE)
         ], "CPU 50%")
         layout.addWidget(self.cpuChart, 0, 0)
-        self.cpuInfo = QuickInfoGroupWidget(self, "CPU Info", [SensorType.Temperature, SensorType.Clock])
+        self.cpuInfo = QuickInfoGroupWidget(self, "CPU Info", [("Temperature", SensorType.Temperature), ("Clock Speed", SensorType.Clock)])
         layout.addWidget(self.cpuInfo, 0, 1)
         self.cpuView.setLayout(layout)
         self.layout().addWidget(self.cpuView, 0, 0)
@@ -129,7 +118,7 @@ class Overview(QWidget):
             ("Used", 100, FREE)
         ], "GPU 50%")
         layout.addWidget(self.gpuChart, 0, 0)
-        self.gpuInfo = QuickInfoGroupWidget(self, "GPU Info", [SensorType.Temperature, SensorType.Clock])
+        self.gpuInfo = QuickInfoGroupWidget(self, "GPU Info", [("Temperature", SensorType.Temperature), ("Clock Speed", SensorType.Clock)])
         layout.addWidget(self.gpuInfo, 0, 1)
         self.gpuView.setLayout(layout)
         self.layout().addWidget(self.gpuView, 0, 1)
@@ -152,13 +141,20 @@ class Overview(QWidget):
         layout = QGridLayout()
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
-        
-        pass
+        self.networkChart = ScrollingLineChart(self)
+        self.networkChart.add_series("Upload", QColor(255, 128, 0))
+        self.networkChart.add_series("Download", QColor(0, 128, 255))
+        self.networkInfo = QuickInfoGroupWidget(self, "Network I/O", [("Download", SensorType.SmallData), ("Upload", SensorType.SmallData)], False)
+        layout.addWidget(self.networkChart, 1, 0)
+        layout.addWidget(self.networkInfo, 0, 0)
+        self.networkView.setLayout(layout)
+        self.layout().addWidget(self.networkView, 1, 1)
 
     def updateData(self):
         self._updateCPUView()
         self._updateGPUView()
         self._updateMemView()
+        self._updateNetworkView()
         
     def _updateCPUView(self):
         cpu = HARDWARE.hardware["CPU"][0] # usually there is only one cpu
@@ -174,7 +170,7 @@ class Overview(QWidget):
             cpuTemperature = NOT_FOUND
         cpuFreq = psutil.cpu_freq()[0]
         self.cpuChart.set_chart_data([("Load", cpuUsage, FREE), ("", 100 - cpuUsage, BACKGROUND)], f"CPU: {SensorValueToString(cpuUsage, SensorType.Load)}", False)
-        self.cpuInfo.updateMetrics({SensorType.Temperature: cpuTemperature, SensorType.Clock: cpuFreq})
+        self.cpuInfo.updateMetrics({"Temperature": cpuTemperature, "Clock Speed": cpuFreq})
         
     def _updateGPUView(self):
         gpu = HARDWARE.hardware["GPU"][1] # 
@@ -183,7 +179,7 @@ class Overview(QWidget):
         gpuFreq = gpuData[("GPU Core", SensorType.Clock)]
         gpuTemp = gpuData[("GPU Core", SensorType.Temperature)]
         self.gpuChart.set_chart_data([("Load", gpuUsage, FREE), ("", 100 - gpuUsage, BACKGROUND)], f"GPU: {SensorValueToString(gpuUsage, SensorType.Load)}", False)
-        self.gpuInfo.updateMetrics({SensorType.Temperature: gpuTemp, SensorType.Clock: gpuFreq})
+        self.gpuInfo.updateMetrics({"Temperature": gpuTemp, "Clock Speed": gpuFreq})
         
     def _updateMemView(self):
         memory = HARDWARE.hardware[HardwareParts.MEMORY.value][0] # usually people only have 1 set of memory
@@ -192,7 +188,14 @@ class Overview(QWidget):
         self.memoryChart.set_chart_data([("Load", memUsage, FREE), ("", 100 - memUsage, BACKGROUND)], f"RAM: {SensorValueToString(memUsage, SensorType.Load)}", False)
         
     def _updateNetworkView(self):
-        pass
+        networkData = psutil.net_io_counters()
+        upload = networkData[0]  / 1000000
+        download = networkData[1] / 1000000
+        self.networkInfo.updateMetrics({"Download": download, "Upload": upload})
+        self.networkChart.add_data_point("Download", download)
+        self.networkChart.add_data_point("Upload", upload)
+        # self.networkChart.
+        
         
         
         
