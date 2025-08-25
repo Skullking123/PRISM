@@ -190,7 +190,6 @@ class ScrollingLineChart(QWidget):
         # Add data point to buffer
         now = time.perf_counter()
         self.data_series[series_name].append((now - self.start, y_value))
-        print(f"Added data point to ({now - self.start}, {y_value})")
 
         # Update the Qt series
         self.update_series_data(series_name)
@@ -238,6 +237,7 @@ class ScrollingLineChart(QWidget):
         # Find data ranges across all series
         all_x_values = []
         all_y_values = []
+        total_points = 0
         
         for data in self.data_series.values():
             if data:
@@ -245,7 +245,8 @@ class ScrollingLineChart(QWidget):
                 y_vals = [point[1] for point in data]
                 all_x_values.extend(x_vals)
                 all_y_values.extend(y_vals)
-        
+                total_points = max(total_points, len(data))
+
         if not all_x_values or not all_y_values:
             return
         
@@ -257,10 +258,16 @@ class ScrollingLineChart(QWidget):
         x_padding = (x_max - x_min) * 0.05 if x_max != x_min else 1.0
         y_padding = (y_max - y_min) * 0.1 if y_max != y_min else 1.0
         
-        if (x_min - x_padding) < 0:
-            self.x_axis.setRange(0, x_max + x_padding)
+        if total_points > 100:
+            if (x_min - x_padding) < 0:
+                self.x_axis.setRange(0, x_max + x_padding)
+            else:
+                self.x_axis.setRange(x_min - x_padding, x_max + x_padding)
         else:
-            self.x_axis.setRange(x_min - x_padding, x_max + x_padding)
+            if (x_min - x_padding) < 0:
+                self.x_axis.setRange(0, x_max + x_padding)
+            else:
+                self.x_axis.setRange(x_min - x_padding, x_max + x_padding)
         self.y_axis.setRange(0, y_max + y_padding)
     
     def set_axis_ranges(self, x_min: float, x_max: float, y_min: float, y_max: float):

@@ -16,6 +16,7 @@ import json
 import psutil
 import random
 from ScrollingLineChart import ScrollingLineChart
+from Speedometer import Speedometer
 
 BACKGROUND = QColor(255, 99, 132)
 FREE = QColor(75, 192, 192)
@@ -94,7 +95,7 @@ class Overview(QWidget):
         self.timer.start()
         
     def initCPUView(self):
-        self.cpuView = QWidget()
+        self.cpuView = QWidget(self)
         layout = QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -109,7 +110,7 @@ class Overview(QWidget):
         self.layout().addWidget(self.cpuView, 0, 0)
     
     def initGPUView(self):
-        self.gpuView = QWidget()
+        self.gpuView = QWidget(self)
         layout = QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -124,7 +125,7 @@ class Overview(QWidget):
         self.layout().addWidget(self.gpuView, 0, 1)
 
     def initMemoryView(self):
-        self.memoryView = QWidget()
+        self.memoryView = QWidget(self)
         layout = QGridLayout()
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
@@ -137,15 +138,15 @@ class Overview(QWidget):
         self.layout().addWidget(self.memoryView, 1, 0)
     
     def initNetworkView(self):
-        self.networkView = QWidget()
+        self.networkView = QWidget(self)
         layout = QGridLayout()
         layout.setContentsMargins(0,0,0,0)
         layout.setSpacing(0)
-        self.networkChart = ScrollingLineChart(self)
-        self.networkChart.add_series("Upload", QColor(255, 128, 0))
-        self.networkChart.add_series("Download", QColor(0, 128, 255))
+        self.networkDownloadChart = Speedometer(self)
+        self.networkUploadChart = Speedometer(self)
         self.networkInfo = QuickInfoGroupWidget(self, "Network I/O", [("Download", SensorType.SmallData), ("Upload", SensorType.SmallData)], False)
-        layout.addWidget(self.networkChart, 1, 0)
+        layout.addWidget(self.networkDownloadChart, 1, 0)
+        layout.addWidget(self.networkUploadChart, 1, 1)
         layout.addWidget(self.networkInfo, 0, 0)
         self.networkView.setLayout(layout)
         self.layout().addWidget(self.networkView, 1, 1)
@@ -192,13 +193,9 @@ class Overview(QWidget):
         upload = networkData[0]  / 1000000
         download = networkData[1] / 1000000
         self.networkInfo.updateMetrics({"Download": download, "Upload": upload})
-        self.networkChart.add_data_point("Download", download)
-        self.networkChart.add_data_point("Upload", upload)
-        # self.networkChart.
-        
-        
-        
-        
+        self.networkDownloadChart.setValue(download)
+        self.networkUploadChart.setValue(upload)
+
         
         
         
